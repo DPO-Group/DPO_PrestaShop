@@ -1,10 +1,14 @@
 # DPO_PrestaShop
-## DPO Group Shopify method v1.0.14
+## DPO Group PrestaShop plugin v1.0.0 for PrestaShop v1.7.7.x
 
-This is the DPO Group method for Shopify. Please feel free to contact the [DPO Group support team](https://www.dpogroup.com/africa/support/) should you require any assistance.
+This is the DPO Group plugin for PrestaShop. Please feel free to contact the [DPO Group support team](https://www.dpogroup.com/africa/support/) should you require any assistance.
 
 ## Installation
-Please navigate to the [releases page](https://github.com/DPO-Group/DPO_PrestaShop/releases), download the latest release (v1.0.14) and unzip. You will then be able to follow the integration guide PDF.
+Please navigate to the [releases page](https://github.com/DPO-Group/DPO_PrestaShop/releases), download the latest release (v1.0.0) and unzip. You will then be able to follow the integration guide which is included in the zip.
+
+## Collaboration
+
+Please submit pull requests with any tweaks, features or fixes you would like to share.
 
 ## About DPO
 
