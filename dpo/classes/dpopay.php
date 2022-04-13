@@ -10,7 +10,7 @@
 
 class dpopay
 {
-    const DPO_URL_TEST = 'https://secure1.sandbox.directpay.online';
+    const DPO_URL_TEST = 'https://secure.3gdirectpay.com';
     const DPO_URL_LIVE = 'https://secure.3gdirectpay.com';
 
     private $dpoUrl;
@@ -70,7 +70,7 @@ class dpopay
         $customerLastName  = $data['customerLastName'];
         $customerAddress   = $data['customerAddress'];
         $customerCity      = $data['customerCity'];
-        $customerPhone     = $data['customerPhone'];
+        $customerPhone     = preg_replace( '/[^0-9]/', '', $data['customerPhone'] );
         $redirectURL       = $data['redirectURL'];
         $backURL           = $data['backUrl'];
         $customerEmail     = $data['customerEmail'];
@@ -80,35 +80,7 @@ class dpopay
 
         $odate   = date('Y/m/d H:i');
         $postXml = <<<POSTXML
-        <?xml version="1.0" encoding="utf-8"?>
-        <API3G>
-            <CompanyToken>$compToken</CompanyToken>
-            <Request>createToken</Request>
-            <Transaction>
-                <PaymentAmount>$paymentAmount</PaymentAmount>
-                <PaymentCurrency>$paymentCurrency</PaymentCurrency>
-                <CompanyRef>$reference</CompanyRef>
-                <customerDialCode></customerDialCode>
-                <customerZip>$customerZip</customerZip>
-                <customerCountry>$customerCountry</customerCountry>
-                <customerFirstName>$customerFirstName</customerFirstName>
-                <customerLastName>$customerLastName</customerLastName>
-                <customerAddress>$customerAddress</customerAddress>
-                <customerCity>$customerCity</customerCity>
-                <customerPhone>$customerPhone</customerPhone>
-                <RedirectURL>$redirectURL</RedirectURL>
-                <BackURL>$backURL</BackURL>
-                <customerEmail>$customerEmail</customerEmail>
-                <TransactionSource>prestashop</TransactionSource>
-            </Transaction>
-            <Services>
-                <Service>
-                    <ServiceType>$accountType</ServiceType>
-                    <ServiceDescription>$reference</ServiceDescription>
-                    <ServiceDate>$odate</ServiceDate>
-                </Service>
-            </Services>
-        </API3G>
+        <?xml version="1.0" encoding="utf-8"?> <API3G> <CompanyToken>$compToken</CompanyToken> <Request>createToken</Request> <Transaction> <PaymentAmount>$paymentAmount</PaymentAmount> <PaymentCurrency>$paymentCurrency</PaymentCurrency> <CompanyRef>$reference</CompanyRef> <customerDialCode></customerDialCode> <customerZip>$customerZip</customerZip> <customerCountry>$customerCountry</customerCountry> <customerFirstName>$customerFirstName</customerFirstName> <customerLastName>$customerLastName</customerLastName> <customerAddress>$customerAddress</customerAddress> <customerCity>$customerCity</customerCity> <customerPhone>$customerPhone</customerPhone> <RedirectURL>$redirectURL</RedirectURL> <BackURL>$backURL</BackURL> <customerEmail>$customerEmail</customerEmail> <TransactionSource>prestashop</TransactionSource> </Transaction> <Services> <Service> <ServiceType>$accountType</ServiceType> <ServiceDescription>$reference</ServiceDescription> <ServiceDate>$odate</ServiceDate> </Service> </Services> </API3G>
 POSTXML;
 
         $curl = curl_init();
