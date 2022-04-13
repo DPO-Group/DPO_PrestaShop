@@ -24,7 +24,7 @@ class Dpo extends PaymentModule
     {
         $this->name        = 'dpo';
         $this->tab         = 'payments_gateways';
-        $this->version     = '1.0.0';
+        $this->version     = '1.0.1';
         $this->author      = 'DPO Group';
         $this->controllers = array('payment', 'validation');
 
