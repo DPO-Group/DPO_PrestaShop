@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8" ?>
 <!--
 /*
- * Copyright (c) 2021 DPO Group
+ * Copyright (c) 2024 DPO Group
  *
  * Author: App Inlet (Pty) Ltd
  *
@@ -9,10 +9,10 @@
  */
 -->
 <module>
-    <name>DPO Group</name>
+    <name>DPO Pay</name>
     <displayName><![CDATA[Dpo]]></displayName>
-    <version><![CDATA[1.0.1]]></version>
-    <description><![CDATA[Accept payments via DPO Group.]]></description>
+    <version><![CDATA[1.1.0]]></version>
+    <description><![CDATA[Accept payments via DPO Pay.]]></description>
     <author><![CDATA[Dpo]]></author>
     <tab><![CDATA[payments_gateways]]></tab>
     <confirmUninstall><![CDATA[Are you sure you want to delete your details ?]]></confirmUninstall>

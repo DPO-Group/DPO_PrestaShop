@@ -1,6 +1,6 @@
 <?php
 /*
- * Copyright (c) 2021 DPO Group
+ * Copyright (c) 2024 DPO Group
  *
  * Author: App Inlet (Pty) Ltd
  *
@@ -9,39 +9,39 @@
 
 use PrestaShop\PrestaShop\Core\Payment\PaymentOption;
 
-if ( ! defined('_PS_VERSION_')) {
+if (!defined('_PS_VERSION_')) {
     exit;
 }
 
 class Dpo extends PaymentModule
 {
-
     const MODULES_DPO_ADMIN          = 'Modules.Dpo.Admin';
     const MODULES_CHECKPAYMENT_ADMIN = 'Modules.Checkpayment.Admin';
-    private $_postErrors = array();
+    private array $_postErrors = array();
 
     public function __construct()
     {
         $this->name        = 'dpo';
         $this->tab         = 'payments_gateways';
-        $this->version     = '1.0.1';
-        $this->author      = 'DPO Group';
+        $this->version     = '1.1.0';
+        $this->author      = 'DPO Pay';
         $this->controllers = array('payment', 'validation');
 
         $this->bootstrap = true;
         parent::__construct();
 
-        $this->displayName            = $this->trans('DPO Group', array(), self::MODULES_DPO_ADMIN);
-        $this->description            = $this->trans(
-            'Accept payments via DPO Group.',
+        $this->displayName      = $this->trans('DPO Pay', array(), self::MODULES_DPO_ADMIN);
+        $this->description      = $this->trans(
+            'Accept payments via DPO Pay.',
             array(),
             self::MODULES_DPO_ADMIN
         );
-        $this->confirmUninstall       = $this->trans(
+        $this->confirmUninstall = $this->trans(
             'Are you sure you want to delete your details ?',
             array(),
             self::MODULES_DPO_ADMIN
         );
+        /** @noinspection PhpUndefinedConstantInspection */
         $this->ps_versions_compliancy = array('min' => '1.7.1.0', 'max' => _PS_VERSION_);
     }
 
@@ -54,13 +54,14 @@ class Dpo extends PaymentModule
 
     public function hookPaymentOptions($params)
     {
-        if ( ! $this->active) {
+        if (!$this->active) {
             return [];
         }
 
         $paymentOption = new PaymentOption();
+        /** @noinspection PhpUndefinedConstantInspection */
         $paymentOption->setModuleName($this->name)
-                      ->setCallToActionText($this->trans('Pay via DPO Group', array(), self::MODULES_DPO_ADMIN))
+                      ->setCallToActionText($this->trans('Pay via DPO Pay', array(), self::MODULES_DPO_ADMIN))
                       ->setLogo(Media::getMediaPath(_PS_MODULE_DIR_ . $this->name . '/logo.png'))
                       ->setAction($this->context->link->getModuleLink($this->name, 'payment', array(), true));
 
@@ -73,7 +74,7 @@ class Dpo extends PaymentModule
 
         if (Tools::isSubmit('btnSubmit')) {
             $this->_postValidation();
-            if ( ! count($this->_postErrors)) {
+            if (!count($this->_postErrors)) {
                 $this->_postProcess();
             } else {
                 foreach ($this->_postErrors as $err) {
@@ -107,23 +108,6 @@ class Dpo extends PaymentModule
                         'label'    => $this->trans('Service Type', array(), self::MODULES_DPO_ADMIN),
                         'name'     => 'DPO_SERVICE_TYPE',
                         'required' => true,
-                    ),
-                    array(
-                        'type'   => 'switch',
-                        'label'  => $this->trans('Test Mode', array(), self::MODULES_DPO_ADMIN),
-                        'name'   => 'DPO_TESTMODE',
-                        'values' => array(
-                            array(
-                                'id'    => 'active_on',
-                                'value' => 1,
-                                'label' => $this->trans('Yes', array(), self::MODULES_DPO_ADMIN),
-                            ),
-                            array(
-                                'id'    => 'active_off',
-                                'value' => 0,
-                                'label' => $this->trans('No', array(), self::MODULES_DPO_ADMIN),
-                            ),
-                        ),
                     ),
                     array(
                         'type'   => 'switch',
@@ -172,7 +156,6 @@ class Dpo extends PaymentModule
         return array(
             'DPO_COMPANY_TOKEN' => Tools::getValue('DPO_COMPANY_TOKEN', Configuration::get('DPO_COMPANY_TOKEN')),
             'DPO_SERVICE_TYPE'  => Tools::getValue('DPO_SERVICE_TYPE', Configuration::get('DPO_SERVICE_TYPE')),
-            'DPO_TESTMODE'      => Tools::getValue('DPO_TESTMODE', Configuration::get('DPO_TESTMODE')),
             'DPO_LOGS'          => Tools::getValue('DPO_LOGS', Configuration::get('DPO_LOGS')),
         );
     }
@@ -189,13 +172,13 @@ class Dpo extends PaymentModule
     private function _postValidation()
     {
         if (Tools::isSubmit('btnSubmit')) {
-            if ( ! Tools::getValue('DPO_COMPANY_TOKEN')) {
+            if (!Tools::getValue('DPO_COMPANY_TOKEN')) {
                 $this->_postErrors[] = $this->trans(
                     'The "Company Token" field is required.',
                     array(),
                     self::MODULES_CHECKPAYMENT_ADMIN
                 );
-            } elseif ( ! Tools::getValue('DPO_SERVICE_TYPE')) {
+            } elseif (!Tools::getValue('DPO_SERVICE_TYPE')) {
                 $this->_postErrors[] = $this->trans(
                     'The "Service Type" field is required.',
                     array(),
@@ -210,12 +193,10 @@ class Dpo extends PaymentModule
         if (Tools::isSubmit('btnSubmit')) {
             Configuration::updateValue('DPO_COMPANY_TOKEN', Tools::getValue('DPO_COMPANY_TOKEN'));
             Configuration::updateValue('DPO_SERVICE_TYPE', Tools::getValue('DPO_SERVICE_TYPE'));
-            Configuration::updateValue('DPO_TESTMODE', Tools::getValue('DPO_TESTMODE'));
             Configuration::updateValue('DPO_LOGS', Tools::getValue('DPO_LOGS'));
         }
         $this->_html .= $this->displayConfirmation(
             $this->trans('Settings updated', array(), 'Admin.Notifications.Success')
         );
     }
-
 }

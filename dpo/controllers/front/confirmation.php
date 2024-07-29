@@ -1,12 +1,16 @@
 <?php
 
 /*
- * Copyright (c) 2021 DPO Group
+ * Copyright (c) 2024 DPO Group
  *
  * Author: App Inlet (Pty) Ltd
  *
  * Released under the GNU General Public License
  */
+
+use Dpo\Common\Dpo;
+
+require_once __DIR__ . '/../../vendor/autoload.php';
 
 class DpoConfirmationModuleFrontController extends ModuleFrontController
 {
@@ -75,17 +79,14 @@ class DpoConfirmationModuleFrontController extends ModuleFrontController
     {
         if (isset($_GET['TransactionToken'])) {
             parent::initContent();
-            require_once _PS_MODULE_DIR_ . $this->module->name . '/classes/dpopay.php';
 
+            $dpopay           = new Dpo(false);
             $transToken       = $_GET['TransactionToken'];
             $companyReference = substr($_GET['CompanyRef'], 0, -7);
 
-            $testmode = Tools::getValue('DPO_TESTMODE', Configuration::get('DPO_TESTMODE'));
-            $dpopay   = new dpopay($testmode);
-
             $data                 = [];
             $data['transToken']   = $transToken;
-            $data['companyToken'] = $dpopay->getCompanyToken();
+            $data['companyToken'] = Configuration::get('DPO_COMPANY_TOKEN');
             $cartid               = substr($companyReference, 0, strpos($companyReference, '_'));
 
             $status_data = $this->getStatusValue($dpopay, $data);
@@ -94,20 +95,28 @@ class DpoConfirmationModuleFrontController extends ModuleFrontController
 
             if ($this->context->cookie->cart_id == $cartid) {
                 $cart       = new Cart($this->context->cookie->cart_id);
-                $keys_match = ($cart->secure_key === $_GET['key']) ? true : false;
+                $keys_match = ($cart->secure_key === $_GET['key']
+                ) ? true : false;
+
+                // Fail the transaction if the CompanyRef between the GET query and the verify data does not match
+                $status = $this->checkCompanyRef($verify, $status);
 
                 if ($keys_match) {
                     switch ($status) {
                         case 1:
                             // Update the purchase status
-                            $method_name = $this->module->displayName;
+                            $transactionAmount    = (float)$verify->TransactionAmount->__toString();
+                            $allocationAmount     = (float)$verify->AllocationAmount->__toString();
+                            $amountWithoutCharges = (string)($transactionAmount - $allocationAmount);
+                            $method_name          = $this->module->displayName;
+                            /** @noinspection PhpUndefinedConstantInspection */
                             $this->module->validateOrder(
                                 $cartid,
                                 _PS_OS_PAYMENT_,
-                                (float)$verify->TransactionAmount->__toString(),
+                                $amountWithoutCharges,
                                 $method_name,
                                 null,
-                                array('transaction_id' => $verify->TransactionApproval->__toString()),
+                                array('transaction_id' => $verify->ApprovalNumber->__toString()),
                                 null,
                                 false,
                                 $cart->secure_key
@@ -169,5 +178,20 @@ class DpoConfirmationModuleFrontController extends ModuleFrontController
         $status_data['status'] = $status;
 
         return $status_data;
+    }
+
+    /**
+     * @param mixed $verify
+     * @param int $status
+     *
+     * @return int
+     */
+    public function checkCompanyRef(mixed $verify, int $status): int
+    {
+        if ($_GET['CompanyRef'] != $verify->CompanyRef->__toString()) {
+            $status = 2;
+        }
+
+        return $status;
     }
 }
