@@ -1,22 +1,23 @@
 <?php
 
 /*
- * Copyright (c) 2021 DPO Group
+ * Copyright (c) 2024 DPO Group
  *
  * Author: App Inlet (Pty) Ltd
  *
  * Released under the GNU General Public License
  */
 
+use Dpo\Common\Dpo;
+
+require_once __DIR__ . '/../../vendor/autoload.php';
+
 class DpoPaymentModuleFrontController extends ModuleFrontController
 {
     public function initContent()
     {
         parent::initContent();
-        require_once _PS_MODULE_DIR_ . $this->module->name . '/classes/dpopay.php';
-
-        $testmode = Tools::getValue('DPO_TESTMODE', Configuration::get('DPO_TESTMODE'));
-        $dpopay   = new dpopay($testmode);
+        $dpopay = new Dpo(false);
 
         // Buyer details
         $customer     = new Customer((int)($this->context->cart->id_customer));
@@ -58,8 +59,8 @@ class DpoPaymentModuleFrontController extends ModuleFrontController
         $country_code                      = $country->getIsoById($user_address->id_country);
 
         $data                      = [];
-        $data['companyToken']      = $dpopay->getCompanyToken();
-        $data['accountType']       = $dpopay->getServiceType();
+        $data['companyToken']      = Configuration::get('DPO_COMPANY_TOKEN');
+        $data['serviceType']       = Configuration::get('DPO_SERVICE_TYPE');
         $data['paymentAmount']     = $amount;
         $data['paymentCurrency']   = $currency;
         $data['customerFirstName'] = $customer->firstname;
@@ -68,11 +69,12 @@ class DpoPaymentModuleFrontController extends ModuleFrontController
         $data['customerCity']      = $user_address->city;
         $data['customerPhone']     = str_replace(['+', '-', '(', ')'], '', $user_address->phone);
         $data['redirectURL']       = $returnUrl;
-        $data['backUrl']           = Tools::getHttpHost() . __PS_BASE_URI__ . 'order';
-        $data['customerEmail']     = $customer->email;
-        $data['customerZip']       = $user_address->postcode;
-        $data['customerCountry']   = $country_code;
-        $data['companyRef']        = $reference;
+        /** @noinspection PhpUndefinedConstantInspection */
+        $data['backURL']         = Tools::getHttpHost() . __PS_BASE_URI__ . 'order';
+        $data['customerEmail']   = $customer->email;
+        $data['customerZip']     = $user_address->postcode;
+        $data['customerCountry'] = $country_code;
+        $data['companyRef']      = $reference;
 
         $tokens = $dpopay->createToken($data);
         if ($tokens['success'] === true) {
@@ -81,13 +83,18 @@ class DpoPaymentModuleFrontController extends ModuleFrontController
             $verified = null;
 
             while ($verified === null) {
-                $verify = $dpopay->verifyToken($data);
+                $verify = $dpopay->verifyToken(
+                    [
+                        'companyToken' => Configuration::get('DPO_COMPANY_TOKEN'),
+                        'transToken'   => $data['transToken']
+                    ]
+                );
 
-                if ( ! empty($verify) && $verify != '') {
+                if (!empty($verify) && $verify != '') {
                     $verify = new SimpleXMLElement($verify);
                     if ($verify->Result->__toString() === '900') {
                         $verified = true;
-                        $payUrl   = $dpopay->getDpoGateway() . '?ID=' . $data['transToken'];
+                        $payUrl   = $dpopay->getPayUrl() . "?ID=" . $tokens['transToken'];
                         header('Location: ' . $payUrl);
                         exit;
                     }
