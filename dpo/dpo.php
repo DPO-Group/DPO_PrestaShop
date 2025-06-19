@@ -1,6 +1,6 @@
 <?php
 /*
- * Copyright (c) 2024 DPO Group
+ * Copyright (c) 2025 DPO Group
  *
  * Author: App Inlet (Pty) Ltd
  *
@@ -17,49 +17,49 @@ class Dpo extends PaymentModule
 {
     const MODULES_DPO_ADMIN          = 'Modules.Dpo.Admin';
     const MODULES_CHECKPAYMENT_ADMIN = 'Modules.Checkpayment.Admin';
-    private array $_postErrors = array();
+    private array  $_postErrors = array();
+    private string $_html;
 
     public function __construct()
     {
         $this->name        = 'dpo';
         $this->tab         = 'payments_gateways';
-        $this->version     = '1.1.0';
+        $this->version     = '1.2.0';
         $this->author      = 'DPO Pay';
         $this->controllers = array('payment', 'validation');
+        $this->_html       = '';
 
         $this->bootstrap = true;
         parent::__construct();
 
-        $this->displayName      = $this->trans('DPO Pay', array(), self::MODULES_DPO_ADMIN);
-        $this->description      = $this->trans(
+        $this->displayName            = $this->trans('DPO Pay', array(), self::MODULES_DPO_ADMIN);
+        $this->description            = $this->trans(
             'Accept payments via DPO Pay.',
             array(),
             self::MODULES_DPO_ADMIN
         );
-        $this->confirmUninstall = $this->trans(
+        $this->confirmUninstall       = $this->trans(
             'Are you sure you want to delete your details ?',
             array(),
             self::MODULES_DPO_ADMIN
         );
-        /** @noinspection PhpUndefinedConstantInspection */
         $this->ps_versions_compliancy = array('min' => '1.7.1.0', 'max' => _PS_VERSION_);
     }
 
-    public function install()
+    public function install(): bool
     {
         return parent::install()
-               && $this->registerHook('paymentOptions')
-               && $this->registerHook('paymentReturn');
+            && $this->registerHook('paymentOptions')
+            && $this->registerHook('paymentReturn');
     }
 
-    public function hookPaymentOptions($params)
+    public function hookPaymentOptions($params): array
     {
         if (!$this->active) {
             return [];
         }
 
         $paymentOption = new PaymentOption();
-        /** @noinspection PhpUndefinedConstantInspection */
         $paymentOption->setModuleName($this->name)
                       ->setCallToActionText($this->trans('Pay via DPO Pay', array(), self::MODULES_DPO_ADMIN))
                       ->setLogo(Media::getMediaPath(_PS_MODULE_DIR_ . $this->name . '/logo.png'))
@@ -68,10 +68,8 @@ class Dpo extends PaymentModule
         return [$paymentOption];
     }
 
-    public function getContent()
+    public function getContent(): string
     {
-        $this->_html = '';
-
         if (Tools::isSubmit('btnSubmit')) {
             $this->_postValidation();
             if (!count($this->_postErrors)) {
@@ -88,7 +86,7 @@ class Dpo extends PaymentModule
         return $this->_html;
     }
 
-    public function renderForm()
+    public function renderForm(): string
     {
         $fields_form = array(
             'form' => array(
@@ -146,12 +144,10 @@ class Dpo extends PaymentModule
             'fields_value' => $this->getConfigFieldsValues(),
         );
 
-        $this->fields_form = array();
-
         return $helper->generateForm(array($fields_form));
     }
 
-    public function getConfigFieldsValues()
+    public function getConfigFieldsValues(): array
     {
         return array(
             'DPO_COMPANY_TOKEN' => Tools::getValue('DPO_COMPANY_TOKEN', Configuration::get('DPO_COMPANY_TOKEN')),
@@ -160,7 +156,7 @@ class Dpo extends PaymentModule
         );
     }
 
-    public function logData($post_data)
+    public function logData($post_data): void
     {
         if (Configuration::get('DPO_LOGS')) {
             $logFile = fopen(__DIR__ . '/dpo_prestashop_logs.txt', 'a+') or die('fopen failed');
@@ -169,7 +165,7 @@ class Dpo extends PaymentModule
         }
     }
 
-    private function _postValidation()
+    private function _postValidation(): void
     {
         if (Tools::isSubmit('btnSubmit')) {
             if (!Tools::getValue('DPO_COMPANY_TOKEN')) {
@@ -188,7 +184,7 @@ class Dpo extends PaymentModule
         }
     }
 
-    private function _postProcess()
+    private function _postProcess(): void
     {
         if (Tools::isSubmit('btnSubmit')) {
             Configuration::updateValue('DPO_COMPANY_TOKEN', Tools::getValue('DPO_COMPANY_TOKEN'));

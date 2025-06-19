@@ -1,7 +1,7 @@
 <?php
 
 /*
- * Copyright (c) 2024 DPO Group
+ * Copyright (c) 2025 DPO Group
  *
  * Author: App Inlet (Pty) Ltd
  *
@@ -14,68 +14,11 @@ require_once __DIR__ . '/../../vendor/autoload.php';
 
 class DpoConfirmationModuleFrontController extends ModuleFrontController
 {
-
-    protected static function dpoQuery($data)
-    {
-        $receivedSum = $data['CHECKSUM'];
-        unset($data['CHECKSUM']);
-        $key           = Configuration::get('DPO_SERVICE_TYPE');
-        $calculatedSum = md5(implode('', $data) . $key);
-
-        if ($receivedSum !== $calculatedSum) {
-            return false;
-        }
-
-        unset($data['TRANSACTION_STATUS']);
-        $checksum         = md5(implode('', $data) . $key);
-        $data['CHECKSUM'] = $checksum;
-
-        $url      = 'https://secure.dpo.co.za/payweb3/query.trans';
-        $response = self::doCurl($url, $data);
-
-        if ($response['error']) {
-            return false;
-        }
-
-        return $response['response'];
-    }
-
-    protected static function doCurl($url, $data)
-    {
-        $curlOpts = [
-            CURLOPT_RETURNTRANSFER => true,
-            CURLOPT_ENCODING       => "",
-            CURLOPT_MAXREDIRS      => 10,
-            CURLOPT_TIMEOUT        => 30,
-            CURLOPT_CUSTOMREQUEST  => "POST",
-            CURLOPT_HTTPHEADER     => array(
-                "cache-control: no-cache",
-            ),
-        ];
-
-        $curlOpts[CURLOPT_POSTFIELDS] = http_build_query($data, '', '&');
-
-        $curl = curl_init($url);
-        curl_setopt_array($curl, $curlOpts);
-        $response = curl_exec($curl);
-        $error    = curl_error($curl);
-        curl_close($curl);
-
-        if (strlen($error) > 0) {
-            return ['error' => true, 'error' => $error];
-        } else {
-            $data      = [];
-            $responses = explode('&', $response);
-            foreach ($responses as $r) {
-                $i           = explode('=', $r);
-                $data[$i[0]] = $i[1];
-            }
-
-            return ['error' => false, 'response' => $data];
-        }
-    }
-
-    public function initContent()
+    /**
+     * @throws PrestaShopException
+     * @throws Exception
+     */
+    public function initContent(): void
     {
         if (isset($_GET['TransactionToken'])) {
             parent::initContent();
@@ -95,8 +38,21 @@ class DpoConfirmationModuleFrontController extends ModuleFrontController
 
             if ($this->context->cookie->cart_id == $cartid) {
                 $cart       = new Cart($this->context->cookie->cart_id);
-                $keys_match = ($cart->secure_key === $_GET['key']
-                ) ? true : false;
+                $keys_match = $cart->secure_key === $_GET['key'];
+
+                $order = Order::getByCartId($cart->id);
+
+                // Check to see if there is already an order for this cart - it may have been created by notify (validate.php)
+                if ($order && $order->hasBeenPaid()) {
+                    Tools::redirect(
+                        $this->context->link->getPageLink(
+                            'order-confirmation',
+                            null,
+                            null,
+                            'key=' . $cart->secure_key . '&id_cart=' . (int)($cartid) . '&id_module=' . (int)($this->module->id)
+                        )
+                    );
+                }
 
                 // Fail the transaction if the CompanyRef between the GET query and the verify data does not match
                 $status = $this->checkCompanyRef($verify, $status);
@@ -105,22 +61,31 @@ class DpoConfirmationModuleFrontController extends ModuleFrontController
                     switch ($status) {
                         case 1:
                             // Update the purchase status
-                            $transactionAmount    = (float)$verify->TransactionAmount->__toString();
-                            $allocationAmount     = (float)$verify->AllocationAmount->__toString();
-                            $amountWithoutCharges = (string)($transactionAmount - $allocationAmount);
-                            $method_name          = $this->module->displayName;
-                            /** @noinspection PhpUndefinedConstantInspection */
-                            $this->module->validateOrder(
-                                $cartid,
-                                _PS_OS_PAYMENT_,
-                                $amountWithoutCharges,
-                                $method_name,
-                                null,
-                                array('transaction_id' => $verify->ApprovalNumber->__toString()),
-                                null,
-                                false,
-                                $cart->secure_key
-                            );
+                            $transactionAmount = (float)$verify->TransactionAmount->__toString();
+                            $method_name       = $this->module->displayName;
+                            $transactionId     = $verify->ApprovalNumber->__toString();
+
+                            if (!$order) {
+                                $this->module->validateOrder(
+                                    (int)$cartid,
+                                    _PS_OS_PAYMENT_,
+                                    $transactionAmount,
+                                    $method_name,
+                                    null,
+                                    array('transaction_id' => $transactionId),
+                                    null,
+                                    false,
+                                    $cart->secure_key
+                                );
+                            } else {
+                                if (!$order->hasBeenPaid()) {
+                                    $order->addOrderPayment(
+                                        (string)$transactionAmount,
+                                        $method_name,
+                                        $transactionId
+                                    );
+                                }
+                            }
 
                             Tools::redirect(
                                 $this->context->link->getPageLink(
@@ -152,26 +117,22 @@ class DpoConfirmationModuleFrontController extends ModuleFrontController
         }
     }
 
-    public function getStatusValue($dpopay, $data)
+    /**
+     * @throws Exception
+     */
+    public function getStatusValue($dpopay, $data): array
     {
         $status      = null;
         $status_data = array();
         while ($status === null) {
             $verify = $dpopay->verifyToken($data);
             if ($verify != '') {
-                $verify = new SimpleXMLElement($verify);
-                switch ($verify->Result->__toString()) {
-                    case '000':
-                        $status = 1;
-                        break;
-                    case '901':
-                        $status = 2;
-                        break;
-                    case '904':
-                    default:
-                        $status = 4;
-                        break;
-                }
+                $verify                = new SimpleXMLElement($verify);
+                $status                = match ($verify->Result->__toString()) {
+                    '000' => 1,
+                    '901' => 2,
+                    default => 4,
+                };
                 $status_data['verify'] = $verify;
             }
         }
