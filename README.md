@@ -12,7 +12,7 @@ the [DPO Pay support team](https://dpogroup.com/contact-us/) should you require 
 - Visit the [releases page](https://github.com/DPO-Group/DPO_PrestaShop/releases) and
   download [dpo.zip](https://github.com/DPO-Group/DPO_PrestaShop/releases/download/v1.2.0/dpo.zip).
 
-2. **Install the Plugina**
+2. **Install the Plugin**
 
 - Access your PrestaShop admin panel.
 - Under the **Improve** menu, click on **Modules** > **Module Manager**.
